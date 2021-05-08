@@ -1,0 +1,125 @@
+---
+title: "vcr_fish_vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{vcr_fish_vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+#library(lterdatasets)
+library(vcrfish)
+library(tidyverse)
+```
+
+An initial cleaning of the VCR fish dataset:
+```{r}
+vcr_fish <- vcr_fish %>%
+  mutate( sample_date=as.Date(sample_date, "%Y-%m-%d") ) %>%
+  mutate(sample_year=as.integer( format(sample_date, format = "%Y") ),
+         sample_month=as.integer( format(sample_date, format = "%m") ),
+         sample_day=as.integer( format(sample_date, format = "%d") )
+         )
+vcr_fish <- vcr_fish %>%
+  mutate(sample_hour=as.integer(
+              format(as.POSIXct(sample_time, format = "%H:%M"), format = "%H")
+              ),
+         sample_min=as.integer(
+           format(as.POSIXct(sample_time, format = "%H:%M"), format = "%M")
+           )
+        )
+```
+
+Let's take a look at the variables within this dataset:
+```{r}
+vcr_fish %>% head()
+sapply(vcr_fish, typeof)
+```
+
+Let's take a closer look at differences between fish species to learn more.
+```{r}
+unique(vcr_fish$species_name)
+```
+
+In the code below, I am filtering the fish species type to have greater than 200 samples to ensure that there is a sufficient sample size in our analyses later on.
+```{r}
+# Count the number of names 
+names_count <- table(vcr_fish$species_name)
+
+# Subset the orginial dataset with only the species names specified by the line above.
+vcr_fish2 <- subset(vcr_fish, species_name %in% names(names_count[names_count > 200]))
+```
+
+Now, we have 5 different fish species (pipefish, silversides, pinfish, silver perch, and bay anchovy) with more than 200 rows of data.
+```{r}
+unique(vcr_fish2$species_name)
+```
+
+A five number summary is a statistical summary that includes the minimum, maximum, median, mean, first quartile, and third quartile values of a given dataset. Let's calculate the five number summary for the fish length of all the species sampled.
+```{r}
+vcr_five_number_sum <- summary(vcr_fish2$length)
+vcr_five_number_sum
+```
+Upon a closer look, we see that our IQR = 95 - 50 (Q3 - Q1) = 45 inches, where 50% of the data sits inside these two quartiles and 50% sits outside of these quartiles. This is a large disparity, so lets create five number summaries for each fish species individually.
+
+Let's view the five number summary for all 5 fish species.
+```{r}
+# Create separate datasets for all 5 species
+pipefish <- vcr_fish2 %>% filter(species_name=="Pipefish")
+silversides <- vcr_fish2 %>% filter(species_name=="Silversides")
+pinfish <- vcr_fish2 %>% filter(species_name=="Pinfish")
+silverperch <- vcr_fish2 %>% filter(species_name=="Silver Perch")
+bayanchovy <- vcr_fish2 %>% filter(species_name=="Bay Anchovy")
+
+# Individual five number summaries
+pipefish_sum <- summary(pipefish$length)
+silversides_sum <- summary(silversides$length)
+pinfish_sum <- summary(pinfish$length)
+silverperch_sum <- summary(silverperch$length)
+bayanchovy_sum <- summary(bayanchovy$length)
+
+pipefish_sum
+silversides_sum
+pinfish_sum
+silverperch_sum
+bayanchovy_sum
+```
+
+Boxplots are a graphical and visual way to display numerical data through four quartiles. This visualization is advantageous because it easily shows a given variable's variability, skewness, outliers, and symmetry. Additionally, boxplots help to visualize the five number summary that we calculated above.
+
+Let's graph a boxplot of the filtered fish data to look at initial trends in the data.
+```{r}
+ggplot(data = vcr_fish2, aes(x=species_name, y=length)) +
+  geom_boxplot()
+```
+It appears that the pinfish species has an outstanding outlier. Let's go ahead and remove this outlier just so that we can view the boxplots at a closer level.
+```{r}
+pinfish_outlier <- vcr_fish2 %>% slice_max(length) #store it in case
+vcr_fish3 <- vcr_fish2 %>% filter(length!=pinfish_outlier$length)
+```
+
+Let's add color to our boxplots to differentiate fish species from each other.
+```{r}
+ggplot(data = vcr_fish3, aes(x=species_name, y=length, color=species_name)) + 
+  geom_boxplot()
+```
+
+Additionally, we can add a main title and alter the axis' titles.
+```{r}
+ggplot(data = vcr_fish3, aes(x=species_name, y=length, color=species_name)) + 
+  geom_boxplot() +
+  labs(title = "Boxplots of VCR Fish Species",
+       x = "Species Name",
+       y = "Length") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+Overall, we see that pipefish as a whole species are longer than the other fish species given they have the highest median value around 140.
+
