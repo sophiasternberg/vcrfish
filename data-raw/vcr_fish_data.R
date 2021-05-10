@@ -1,3 +1,10 @@
+#' ---
+#' title: "Data Preparation"
+#' ---
+
+#' ### Download the raw data from EDI.org
+
+#+ download_data, eval=FALSE
 # Attach packages
 library(usethis)
 library(metajam)
@@ -10,6 +17,8 @@ vcr_url <- "https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-v
 # Download the data package with metajam
 vcr_download <- download_d1_data(data_url = vcr_url, path = tempdir(), dir_name="vcr_fish")
 
+#+ data sampling, eval=FALSE
+#+ save data, include=FALSE, eval = FALSE
 # Read in data
 vcr_files <- read_d1_files(vcr_download, "read.csv",
                            header=T
