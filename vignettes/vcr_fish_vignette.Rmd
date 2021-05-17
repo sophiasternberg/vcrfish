@@ -15,18 +15,18 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(lterdatasets)
-#library(vcrfish)
+#library(lterdatasets)
+library(vcrfish)
 library(tidyverse)
 ```
 
 An initial cleaning of the VCR fish dataset:
 ```{r}
 vcr_fish <- vcr_fish %>%
-  mutate( sample_date=as.Date(sample_date, "%Y-%m-%d") ) %>%
-  mutate(sample_year=as.integer( format(sample_date, format = "%Y") ),
-         sample_month=as.integer( format(sample_date, format = "%m") ),
-         sample_day=as.integer( format(sample_date, format = "%d") )
+  mutate(sample_date=as.Date(sample_date, "%Y-%m-%d")) %>%
+  mutate(sample_year=as.integer(format(sample_date, format = "%Y")),
+         sample_month=as.integer(format(sample_date, format = "%m")),
+         sample_day=as.integer(format(sample_date, format = "%d"))
          )
 vcr_fish <- vcr_fish %>%
   mutate(sample_hour=as.integer(
@@ -46,13 +46,13 @@ sapply(vcr_fish, typeof)
 
 Let's take a closer look at differences between fish species to learn more.
 ```{r}
-unique(vcr_fish$species_name)
+vcr_fish %>% distinct(species_name)
 ```
 
 Before continuing to any exploratory analyses, it is always important to check the sample size of the variables in question.
 ```{r}
 # Count the number of names 
-names_count <- table(vcr_fish$species_name)
+names_count <- table(vcr_fish %>% select(species_name))
 names_count
 ```
 There is a large disparity in the recorded fish species above--there are 442 rows of data collected on Pipefish, whereas there are only  2 rows collected on the Pufferfish. In the code below, I am filtering the fish species type to have greater than 200 samples to ensure that there is a sufficient sample size in our analyses later on.
@@ -63,12 +63,12 @@ vcr_fish2 <- subset(vcr_fish, species_name %in% names(names_count[names_count > 
 
 Now, we have 5 different fish species (pipefish, silversides, pinfish, silver perch, and bay anchovy) with more than 200 rows of data.
 ```{r}
-unique(vcr_fish2$species_name)
+vcr_fish2 %>% distinct(species_name)
 ```
 
 A five number summary is a statistical summary that includes the minimum, maximum, median, mean, first quartile, and third quartile values of a given dataset. Let's calculate the five number summary for the fish length of all the species sampled.
 ```{r}
-vcr_five_number_sum <- summary(vcr_fish2$length)
+vcr_five_number_sum <- summary(vcr_fish2 %>% select(length))
 vcr_five_number_sum
 ```
 Upon a closer look, we see that our IQR = 95 - 50 (Q3 - Q1) = 45 inches, where 50% of the data sits inside these two quartiles and 50% sits outside of these quartiles. This is a large disparity, so lets create five number summaries for each fish species individually.
@@ -83,11 +83,11 @@ silverperch <- vcr_fish2 %>% filter(species_name=="Silver Perch")
 bayanchovy <- vcr_fish2 %>% filter(species_name=="Bay Anchovy")
 
 # Individual five number summaries
-pipefish_sum <- summary(pipefish$length)
-silversides_sum <- summary(silversides$length)
-pinfish_sum <- summary(pinfish$length)
-silverperch_sum <- summary(silverperch$length)
-bayanchovy_sum <- summary(bayanchovy$length)
+pipefish_sum <- summary(pipefish %>% select(length))
+silversides_sum <- summary(silversides %>% select(length))
+pinfish_sum <- summary(pinfish %>% select(length))
+silverperch_sum <- summary(silverperch %>% select(length))
+bayanchovy_sum <- summary(bayanchovy %>% select(length))
 
 pipefish_sum
 silversides_sum
@@ -100,7 +100,8 @@ Boxplots are a graphical and visual way to display numerical data through four q
 
 Let's graph a boxplot of the filtered fish data to look at initial trends in the data.
 ```{r}
-ggplot(data = vcr_fish2, aes(x=species_name, y=length)) +
+vcr_fish2 %>% 
+  ggplot(aes(x=species_name, y=length)) +
   geom_boxplot()
 ```
 It appears that the pinfish species has an outstanding outlier. Let's go ahead and remove this outlier just so that we can view the boxplots at a closer level.
@@ -111,7 +112,8 @@ vcr_fish3 <- vcr_fish2 %>% filter(length!=pinfish_outlier$length)
 
 Let's add color to our boxplots to differentiate fish species from each other.
 ```{r}
-ggplot(data = vcr_fish3, aes(x=species_name, y=length, color=species_name)) + 
+vcr_fish3 %>% 
+  ggplot(aes(x=species_name, y=length, color=species_name)) + 
   geom_boxplot()
 ```
 
@@ -124,7 +126,17 @@ ggplot(data = vcr_fish3, aes(x=species_name, y=length, color=species_name)) +
        y = "Length") + 
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
-Overall, we see that pipefish as a whole species are longer than the other fish species given they have the highest median value around 140.
+Let's reorder the boxplots in an ascending order. 
+```{r}
+vcr_fish3 %>% 
+  ggplot(aes(x = fct_reorder(species_name, length), y = length, color = species_name)) +
+  geom_boxplot() +
+  labs(title = "Boxplots of VCR Fish Species",
+       x = "Species Name",
+       y = "Length") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+Overall, we see that pipefish as a whole species are longer than the other fish species given they have the highest median value around 140 and have the greatest range compared to the other fish plotted above. Reversely, bay anchovies have the smallest range out of all the fish, while pinfish have the lowest median length value of 49. We should also reiterate that the pinfish species had the largest outstanding outlier that was removed from the boxplots.
 
 # Citation 
   
